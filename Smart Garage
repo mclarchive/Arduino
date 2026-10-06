@@ -1,0 +1,63 @@
+#define BLYNK_TEMPLATE_ID "TMPL6nt2OSVLz"
+#define BLYNK_TEMPLATE_NAME "Led Pertama karena mr stres"
+#define BLYNK_AUTH_TOKEN "jymCwmjKU8mPLZ9VlirfPRLOJwVPoat5"
+
+#include <WiFi.h>
+#include <BlynkSimpleEsp32.h>
+#include <ESP32Servo.h> 
+
+char ssid[] = "Timedoor Academy Gatsu";
+char pass[] = "codingisfun";
+
+#define TRIG_PIN 5
+#define ECHO_PIN 18
+#define SERVO_PIN 26
+
+Servo binServo;
+bool manualMode = false;
+
+// Fungsi membaca jarak dari Sensor Ultrasonik
+float getDistance() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  
+  long duration = pulseIn(ECHO_PIN, HIGH, 30000);
+  return (duration == 0) ? 999 : (duration * 0.0343 / 2.0);
+}
+
+// Blynk V3: Manual Overide (Tombol Sakelar di Aplikasi)
+BLYNK_WRITE(V3) {
+  manualMode = param.asInt();
+  binServo.write(manualMode ? 10 : 180); // 100 = Buka, 10 = Tutup
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  binServo.attach(SERVO_PIN, 500, 2400);
+  binServo.write(180); // Posisi awal tertutup
+
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+}
+
+void loop() {
+  Blynk.run();
+
+  // Mode Otomatis (Hanya jalan jika mode manual dari Blynk mati)
+  if (!manualMode) {
+    float distance = getDistance();
+    
+    if (distance > 0 && distance <= 15.0) {
+      binServo.write(180); // Buka Servo
+      delay(3000);         // Tahan buka selama 3 detik
+      binServo.write(10);  // Tutup Servo
+    }
+  }
+  
+  delay(100);
+}
