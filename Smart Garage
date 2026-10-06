@@ -57,6 +57,7 @@ void loop() {
       delay(3000);         // Tahan buka selama 3 detik
       binServo.write(10);  // Tutup Servo
     }
+
   }
   
   delay(100);
