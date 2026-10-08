@@ -1,64 +1,92 @@
-#define BLYNK_TEMPLATE_ID "TMPL6nt2OSVLz"
-#define BLYNK_TEMPLATE_NAME "Led Pertama karena mr stres"
-#define BLYNK_AUTH_TOKEN "jymCwmjKU8mPLZ9VlirfPRLOJwVPoat5"
+#include <Servo.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 
-#include <WiFi.h>
-#include <BlynkSimpleEsp32.h>
-#include <ESP32Servo.h> 
+LiquidCrystal_I2C lcd (0x27, 16, 2);
 
-char ssid[] = "Timedoor Academy Gatsu";
-char pass[] = "codingisfun";
 
-#define TRIG_PIN 5
-#define ECHO_PIN 18
-#define SERVO_PIN 26
+const int irPin = 11;
+const int ledPin = 13;
+const int buttonPin = 10;
 
-Servo binServo;
-bool manualMode = false;
+const int trigPin= 8;
+const int echoPin= 9;
 
-// Fungsi membaca jarak dari Sensor Ultrasonik
-float getDistance() {
-  digitalWrite(TRIG_PIN, LOW);
-  delayMicroseconds(2);
-  digitalWrite(TRIG_PIN, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIG_PIN, LOW);
-  
-  long duration = pulseIn(ECHO_PIN, HIGH, 30000);
-  return (duration == 0) ? 999 : (duration * 0.0343 / 2.0);
-}
+const int buzzer= 7;
 
-// Blynk V3: Manual Overide (Tombol Sakelar di Aplikasi)
-BLYNK_WRITE(V3) {
-  manualMode = param.asInt();
-  binServo.write(manualMode ? 10 : 180); // 100 = Buka, 10 = Tutup
-}
+Servo myServo;
+
+long duration;
+int distance;
 
 void setup() {
-  Serial.begin(115200);
-  pinMode(TRIG_PIN, OUTPUT);
-  pinMode(ECHO_PIN, INPUT);
+  // put your setup code here, to run once:
+  pinMode(irPin, INPUT);
+  pinMode(ledPin, OUTPUT);
+  pinMode(buttonPin, INPUT_PULLUP);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(buzzer, OUTPUT);
 
-  binServo.attach(SERVO_PIN, 500, 2400);
-  binServo.write(180); // Posisi awal tertutup
 
-  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+  myServo.attach(12);
+
+  myServo.write(180);
+
+  lcd.init();
+  lcd.backlight();
+
+  Serial.begin(9600);
 }
 
-void loop() {
-  Blynk.run();
 
-  // Mode Otomatis (Hanya jalan jika mode manual dari Blynk mati)
-  if (!manualMode) {
-    float distance = getDistance();
-    
-    if (distance > 0 && distance <= 15.0) {
-      binServo.write(180); // Buka Servo
-      delay(3000);         // Tahan buka selama 3 detik
-      binServo.write(10);  // Tutup Servo
-    }
+
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  int sensorValue = digitalRead(irPin);
+  int buttonValue = digitalRead(buttonPin);
+
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds (2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds (10);
+  digitalWrite(trigPin, LOW);
+
+  duration = pulseIn(echoPin, HIGH);
+  distance = duration * 0.034 / 2;
+  
+  Serial.println(distance);
+
+  if(distance < 5 ) {
+    lcd.clear();
+    lcd.setCursor(4, 0);
+    lcd.print("Full");
+    noTone(buzzer);
+  } else if (distance > 5 && distance < 20) {
+    tone(buzzer, 200);
+    lcd.clear();
+    lcd.setCursor(4, 0);
+    lcd.print("Bunyi");
 
   }
-  
-  delay(100);
+  else {
+    lcd.clear();
+    lcd.setCursor(4, 0);
+    lcd.print("Empty");
+    noTone(buzzer);
+}
+
+  if(sensorValue == LOW || buttonValue == LOW) {
+    Serial.println("Objek Terdeteksi");
+    myServo.write(90);
+    digitalWrite(ledPin, HIGH);
+    delay(2000);
+  } else {
+    Serial.println("Tidak ada objek");
+    myServo.write(180);
+    digitalWrite(ledPin, LOW);
+  }
+
+  delay(200);
 }
